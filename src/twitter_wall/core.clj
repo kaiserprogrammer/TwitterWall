@@ -14,10 +14,10 @@
    (java.awt Font Color GridLayout Dimension)
    (javax.swing.border LineBorder)))
 
-(def *app-consumer-key* "jzl7xHs9svVflj8GG8pyFg")
-(def *app-consumer-secret* "n98PLQlc8TGdzaJF2IG0DM308UJhq6A08YciZEnUjU")
-(def *user-access-token* "88661852-PVkKrSCc0l0U6i3gIyRcLuzcD0vEt6zOLAnIebQqQ")
-(def *user-access-token-secret* "ylP6OPKi25eHyCHmeltP6wClOn2wS2qdr3tLVdH0LF8")
+(def *app-consumer-key* "")
+(def *app-consumer-secret* "")
+(def *user-access-token* "")
+(def *user-access-token-secret* "")
 
 (def ^:dynamic *creds*
   (make-oauth-creds
@@ -47,7 +47,6 @@
     (.setLayout text-panel (BoxLayout. text-panel BoxLayout/Y_AXIS))
     (.setFont tweet-text (Font. "Serif" Font/PLAIN 18))
     (.setFont tweet-name (Font. "Inconsolata" Font/BOLD 20))
-    ;; (.setOpaque label true)
     (.setBackground tweet-text (first @colors))
     (.setBackground tweet-name (first @colors))
     (.setBackground tweet-panel (Color. 255 255 255))
@@ -57,8 +56,6 @@
     (.add text-panel tweet-name)
     (.add text-panel tweet-text)
     (.add tweet-panel text-panel)
-    ;; (.setBorder tweet-panel (LineBorder. Color/WHITE 5))
-    ;; (print tweet)
     (swap! tweets conj tweet-panel)))
 
 (def panel1 (JPanel.))
@@ -110,7 +107,6 @@
       (doto f
         (.setLayout (java.awt.FlowLayout.))
         (.setContentPane split-pane))
-      ;; (.setLayout panel (GridLayout. 2 2))
       (.setBackground split-pane Color/WHITE)
       (.setLayout panel1 (BoxLayout. panel1 BoxLayout/PAGE_AXIS))
       (.setLayout panel2 (BoxLayout. panel2 BoxLayout/PAGE_AXIS))
