@@ -9,7 +9,8 @@
    [clojure.data.json :as json])
   (:import
    (twitter.callbacks.protocols AsyncStreamingCallback)
-   (javax.swing UIManager JPanel JLabel ImageIcon BoxLayout JEditorPane JSeparator SwingConstants Box )
+   (javax.swing UIManager JPanel JLabel ImageIcon BoxLayout JEditorPane
+                JSeparator SwingConstants Box JSplitPane)
    (java.awt Font Color GridLayout Dimension)
    (javax.swing.border LineBorder)))
 
@@ -60,37 +61,62 @@
     ;; (print tweet)
     (swap! tweets conj tweet-panel)))
 
-(def panel (JPanel.))
+(def panel1 (JPanel.))
+(def panel2 (JPanel.))
+(def f (javax.swing.JFrame.))
+(def p (JPanel.))
+(def split-pane (JSplitPane. JSplitPane/HORIZONTAL_SPLIT panel1 panel2))
+
+
+(def track "java")
 
 (defn new-panel []
-  (.removeAll panel)
-  (doall (map #(do (.add panel %)
-                   (.add panel (JSeparator. SwingConstants/HORIZONTAL))) @tweets)))
+  (.removeAll panel1)
+  (.removeAll panel2)
+  (.setDividerLocation split-pane 0.5)
+  (doall (map #(do (.add panel1 %)
+                   (.add panel1 (JSeparator. SwingConstants/HORIZONTAL))) (take 9 @tweets)))
+  (doall (map #(do (.add panel2 %)
+                   (.add panel2 (JSeparator. SwingConstants/HORIZONTAL))) (take 9 (drop 9 @tweets)))))
 
 (defn add-to-panel [tweet]
   (add-components tweet)
   (new-panel)
-  (when (> (count @tweets) 20)
+  (when (> (count @tweets) 18)
     (swap! tweets butlast))
   (swap! colors reverse)
-  (.revalidate panel))
+  (.revalidate panel1)
+  (.revalidate panel2)
+  (.revalidate p))
+
+(declare *custom-streaming-callback* restart-on-exception)
+
+(defn restart-on-exception [response throwable]
+  (statuses-filter :params {:track track}
+                   :oauth-creds *creds*
+                   :callbacks *custom-streaming-callback*))
 
 (def ^:dynamic *custom-streaming-callback*
   (AsyncStreamingCallback. (comp add-to-panel (fn [res boas] (json/read-json (.toString boas))))
                            (fn [res boas] (swap! errors inc))
-                           exception-print))
+                           restart-on-exception))
 
 
 (defn -main [& args]
   (do (UIManager/setLookAndFeel (UIManager/getSystemLookAndFeelClassName))
-      (statuses-filter :params {:track "java"}
+      (statuses-filter :params {:track track}
                        :oauth-creds *creds*
                        :callbacks *custom-streaming-callback*)
-      (let [f (javax.swing.JFrame.)]
-        (doto f
-          (.setLayout (java.awt.FlowLayout.))
-          (.setContentPane panel)
-          (.setVisible true))
-        ;; (.setLayout panel (GridLayout. 2 2))
-        (.setLayout panel (BoxLayout. panel BoxLayout/PAGE_AXIS))
-        (.setBackground panel Color/WHITE))))
+      (doto f
+        (.setLayout (java.awt.FlowLayout.))
+        (.setContentPane split-pane))
+      ;; (.setLayout panel (GridLayout. 2 2))
+      (.setBackground split-pane Color/WHITE)
+      (.setLayout panel1 (BoxLayout. panel1 BoxLayout/PAGE_AXIS))
+      (.setLayout panel2 (BoxLayout. panel2 BoxLayout/PAGE_AXIS))
+      (.setResizeWeight split-pane 0.0)
+      (.setDividerLocation split-pane 0.5)
+      (.setVisible panel1 true)
+      (.setVisible panel2 true)
+      (.setVisible split-pane true)
+      (.setVisible f true)))
