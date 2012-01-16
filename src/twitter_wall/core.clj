@@ -10,14 +10,15 @@
   (:import
    (twitter.callbacks.protocols AsyncStreamingCallback)
    (javax.swing UIManager JPanel JLabel ImageIcon BoxLayout JEditorPane
-                JSeparator SwingConstants Box JSplitPane)
+                JSeparator SwingConstants Box JSplitPane JFrame)
    (java.awt Font Color GridLayout Dimension)
-   (javax.swing.border LineBorder)))
+   (javax.swing.border LineBorder)
+   (org.apache.log4j BasicConfigurator)))
 
-(def *app-consumer-key* "")
-(def *app-consumer-secret* "")
-(def *user-access-token* "")
-(def *user-access-token-secret* "")
+(def ^:dynamic *app-consumer-key* "6eC2PjMZBYjsSAnsBM0Ug")
+(def ^:dynamic *app-consumer-secret* "TdSk7R7pIjztWF76xvmrUb4V8rPCdIIUTGn9lMtDi0")
+(def ^:dynamic *user-access-token* "462187083-Gx7dMOfmd9S67pWnmzOzDWMCEVdJvPGPMuTRuVk7")
+(def ^:dynamic *user-access-token-secret* "6Dk01QGUhzqUzTS938wteo3niWnqumFfJpIQFDcwQ")
 
 (def ^:dynamic *creds*
   (make-oauth-creds
@@ -64,49 +65,71 @@
 (def p (JPanel.))
 (def split-pane (JSplitPane. JSplitPane/HORIZONTAL_SPLIT panel1 panel2))
 
+(def num-panel
+  (let [num-panel (JPanel.)
+        num-text (JEditorPane.)]
+    (.setEditable num-text false)
+    (.setLayout num-panel (BoxLayout. num-panel BoxLayout/X_AXIS))
+    (.setText num-text "Send a SMS to 0160/220 6 260 to display text")
+    (.setFont num-text (Font. "Serif" Font/PLAIN 26))
+    (.add num-panel (Box/createRigidArea (Dimension. 10 0)))
+    (.add num-panel num-text)
+    num-panel))
 
-(def track "java")
+(def track "#tmn12")
 
 (defn new-panel []
   (.removeAll panel1)
   (.removeAll panel2)
   (.setDividerLocation split-pane 0.5)
+  (.add panel1 num-panel)
   (doall (map #(do (.add panel1 %)
-                   (.add panel1 (JSeparator. SwingConstants/HORIZONTAL))) (take 9 @tweets)))
+                   (.add panel1 (JSeparator. SwingConstants/HORIZONTAL))) (take 8 @tweets)))
   (doall (map #(do (.add panel2 %)
                    (.add panel2 (JSeparator. SwingConstants/HORIZONTAL))) (take 9 (drop 9 @tweets)))))
 
 (defn add-to-panel [tweet]
-  (add-components tweet)
-  (new-panel)
-  (when (> (count @tweets) 18)
-    (swap! tweets butlast))
-  (swap! colors reverse)
-  (.revalidate panel1)
-  (.revalidate panel2)
-  (.revalidate p))
+  (if (= :false tweet)
+    (print "oops")
+    (do (add-components tweet)
+        (new-panel)
+        (when (> (count @tweets) 18)
+          (swap! tweets butlast))
+        (swap! colors reverse)
+        (.revalidate panel1)
+        (.revalidate panel2)
+        (.revalidate p))))
 
-(declare *custom-streaming-callback* restart-on-exception)
+(declare ^:dynamic *custom-streaming-callback* restart-on-exception)
 
-(defn restart-on-exception [response throwable]
-  (statuses-filter :params {:track track}
-                   :oauth-creds *creds*
-                   :callbacks *custom-streaming-callback*))
+
+(defn restart-on-exception [& args]
+  (do (swap! errors inc)
+      (statuses-filter :params {:track track}
+                       :oauth-creds *creds*
+                       :callbacks *custom-streaming-callback*)))
 
 (def ^:dynamic *custom-streaming-callback*
-  (AsyncStreamingCallback. (comp add-to-panel (fn [res boas] (json/read-json (.toString boas))))
+  (AsyncStreamingCallback. (comp add-to-panel
+                                 (fn [res boas]
+                                   (try (json/read-json (.toString boas))
+                                        (catch Throwable blub :false))))
                            (fn [res boas] (swap! errors inc))
                            restart-on-exception))
 
 
+
+
 (defn -main [& args]
-  (do (UIManager/setLookAndFeel (UIManager/getSystemLookAndFeelClassName))
+  (do (BasicConfigurator/configure)
+      (UIManager/setLookAndFeel (UIManager/getSystemLookAndFeelClassName))
       (statuses-filter :params {:track track}
                        :oauth-creds *creds*
                        :callbacks *custom-streaming-callback*)
       (doto f
         (.setLayout (java.awt.FlowLayout.))
-        (.setContentPane split-pane))
+        (.setContentPane split-pane)
+        (.setExtendedState JFrame/MAXIMIZED_BOTH))
       (.setBackground split-pane Color/WHITE)
       (.setLayout panel1 (BoxLayout. panel1 BoxLayout/PAGE_AXIS))
       (.setLayout panel2 (BoxLayout. panel2 BoxLayout/PAGE_AXIS))
@@ -116,3 +139,8 @@
       (.setVisible panel2 true)
       (.setVisible split-pane true)
       (.setVisible f true)))
+
+(defn restart []
+  (statuses-filter :params {:track track}
+                   :oauth-creds *creds*
+                   :callbacks *custom-streaming-callback*))
